@@ -1,5 +1,4 @@
 ﻿using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Attributes;
 using System.Threading.Tasks;
 using DSharpPlus.Entities;
 using System.Linq;
@@ -7,10 +6,9 @@ using System;
 
 namespace Cabbage_Music
 {
-    public class Other : BaseCommandModule
+    public class Other
     {
-        [Command("invite"), Description("Generates an invite for the bot")]
-        public async Task Invite(CommandContext ctx)
+        public static async Task Invite(SharedContext ctx)
         {
             var embed = new DiscordEmbedBuilder
             {
@@ -19,8 +17,7 @@ namespace Cabbage_Music
             await ctx.RespondAsync(embed: embed);
         }
 
-        [Command("help"), Description("Displays the help command")]
-        public async Task Help(CommandContext ctx, string command = null)
+        public static async Task Help(SharedContext ctx, string command = null)
         {
             if(command == null)
             {
@@ -62,12 +59,6 @@ namespace Cabbage_Music
                 embed.AddField("Usage", $"c!{comm.Name} {args}");
                 await ctx.RespondAsync(embed: embed);
             }
-        }
-
-        [Command("ping"), Description("Responds with the latency in ms")]
-        public async Task Ping(CommandContext ctx)
-        {
-            await ctx.RespondAsync($"The ping is {ctx.Client.Ping}ms");
         }
     }
 }

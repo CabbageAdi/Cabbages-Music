@@ -14,6 +14,9 @@ using SpotifyAPI.Web;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using System.IO;
+using DSharpPlus.SlashCommands;
+using DSharpPlus.Interactivity.Extensions;
+using System.Reflection;
 
 namespace Cabbage_Music
 {
@@ -44,13 +47,23 @@ namespace Cabbage_Music
 
             var spotify = new SpotifyClient(spotifyConfig);
 
+            var services = new ServiceCollection().AddSingleton(rand).AddSingleton(spotify).BuildServiceProvider();
+
             var commands = await discord.UseCommandsNextAsync(new CommandsNextConfiguration
             {
                 EnableDms = false,
-                StringPrefixes = new[] {"cabbages!", "cabbage!", "cab!", "c!", "cm"},
+                StringPrefixes = new[] { "cabbages!", "cabbage!", "cab!", "c!", "cm" },
                 EnableDefaultHelp = false,
-                Services = new ServiceCollection().AddSingleton(rand).AddSingleton(spotify).BuildServiceProvider()
+                Services = services
             });
+
+            await discord.UseInteractivityAsync(new()
+            {
+                AckPaginationButtons = true
+            });
+
+            var slash = await discord.UseSlashCommandsAsync(new SlashCommandsConfiguration { Services = services });
+            slash.RegisterCommands<SlashCommands>();
 
             var lavalink = await discord.UseLavalinkAsync();
 
@@ -70,12 +83,10 @@ namespace Cabbage_Music
             Queues = new();
             Loop = new();
 
+            commands.RegisterCommands(Assembly.GetExecutingAssembly());
+
             foreach (var instance in commands.Values)
             {
-                instance.RegisterCommands<PlayCommand>();
-                instance.RegisterCommands<Music>();
-                instance.RegisterCommands<Other>();
-
                 instance.CommandErrored += async (s, e) =>
                 {
                     if (e.Exception.Message == "Specified command was not found.") return;
@@ -98,6 +109,15 @@ namespace Cabbage_Music
                     {
                         s.Client.Logger.LogError(e.Exception.ToString() + $" in `{e.Context.Guild.Name}` in channel `{e.Context.Channel.Name}` by `{e.Context.Member.Username + "#" + e.Context.Member.Discriminator}`");
                     }
+                };
+            }
+
+            foreach (var instance in slash.Values)
+            {
+                instance.SlashCommandErrored += (s, e) =>
+                {
+                    s.Client.Logger.LogError(e.Exception.ToString() + $" in `{e.Context.Guild.Name}` in channel `{e.Context.Channel.Name}` by `{e.Context.Member.Username + "#" + e.Context.Member.Discriminator}`");
+                    return Task.CompletedTask;
                 };
             }
 

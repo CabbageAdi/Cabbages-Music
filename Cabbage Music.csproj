@@ -7,10 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DSharpPlus" Version="4.1.0" />
-    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.1.0" />
-    <PackageReference Include="DSharpPlus.Lavalink" Version="4.1.0" />
+    <PackageReference Include="DSharpPlus" Version="4.2.0-nightly-00987" />
+    <PackageReference Include="DSharpPlus.CommandsNext" Version="4.2.0-nightly-00987" />
+    <PackageReference Include="DSharpPlus.Interactivity" Version="4.2.0-nightly-00987" />
+    <PackageReference Include="DSharpPlus.Lavalink" Version="4.2.0-nightly-00987" />
+    <PackageReference Include="IDoEverything.DSharpPlus.SlashCommands" Version="2.0.3" />
     <PackageReference Include="SpotifyAPI.Web" Version="6.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis" Version="3.10.0-1.final" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="3.10.0-1.final" />
   </ItemGroup>
 
 </Project>

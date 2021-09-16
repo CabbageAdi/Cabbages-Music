@@ -1,22 +1,16 @@
-﻿using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Attributes;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using DSharpPlus.Entities;
 using System;
 using System.Linq;
 using DSharpPlus.Lavalink;
-using SpotifyAPI.Web;
-using System.Text;
 using System.Collections.Generic;
+using DSharpPlus.Interactivity;
 
 namespace Cabbage_Music
 {
-    public class Music : BaseCommandModule
+    public class Music
     {
-        public Random Rand { get; set; }
-
-        [Command("Join"), Description("Joins the voice chat"), Aliases("j")]
-        public async Task Join(CommandContext ctx, DiscordChannel channel = null)
+        public static async Task Join(SharedContext ctx, DiscordChannel channel = null)
         {
             var node = ctx.Client.GetLavalink().GetIdealNodeConnection();
             if (ctx.Member.VoiceState == null)
@@ -34,17 +28,15 @@ namespace Cabbage_Music
                 channel = ctx.Member?.VoiceState.Channel;
             }
 
-            await node.ConnectAsync(channel);
+            var conn = await node.ConnectAsync(channel);
             await ctx.RespondAsync($"Joined **{channel.Name}**!");
-            await node.GetGuildConnection(ctx.Guild).SetVolumeAsync(50);
-            //await ctx.Guild.CurrentMember.ModifyAsync(x => x.Deafened = true);
+            await conn.SetVolumeAsync(50);
 
             if (Program.Queues.ContainsKey(ctx.Guild.Id))
                 Program.Queues.Remove(ctx.Guild.Id);
         }
 
-        [Command("Leave"), Aliases("stop", "l"), Description("Leaves the voice chat")]
-        public async Task Leave(CommandContext ctx)
+        public static async Task Leave(SharedContext ctx)
         {
             var node = ctx.Client.GetLavalink().GetIdealNodeConnection();
             if (ctx.Member.VoiceState == null)
@@ -70,8 +62,7 @@ namespace Cabbage_Music
                 Program.Loop.Remove(ctx.Guild.Id);
         }
 
-        [Command("Queue"), Aliases("q"), Description("Take a look at your song queue")]
-        public async Task Queue(CommandContext ctx)
+        public static async Task Queue(SharedContext ctx)
         {
             var node = ctx.Client.GetLavalink().GetIdealNodeConnection();
             var conn = node.GetGuildConnection(ctx.Guild);
@@ -94,47 +85,46 @@ namespace Cabbage_Music
             }
             var queue = Program.Queues[ctx.Guild.Id];
 
+            var pages = new List<Page>();
+
             if (queue.Count > 0)
             {
-                var embed = new DiscordEmbedBuilder
-                {
-                    Title = "Song queue",
-                    Color = DiscordColor.Blue
-                };
-                int count = 0;
+                List<List<LavalinkTrack>> split = new();
                 for (int i = 0; i < queue.Count; i++)
                 {
-                    if (i > 10)
-                    {
-                        count += 1;
-                    }
-                    else
-                    {
-                        var track = queue[i];
-                        embed.Description = embed.Description + $"{i + 1}. [{track.Title}](https://www.youtube.com/watch?v={track.Identifier})\n";
-                    }
+                    if (i % 10 == 0)
+                        split.Add(new());
+                    split[(i - (i % 10)) / 10].Add(queue[i]);
                 }
-                if (count > 0)
+                int counter = 0;
+                foreach (var page in split)
                 {
-                    if (count == 1)
+                    var embed = new DiscordEmbedBuilder
                     {
-                        embed.Description = embed.Description + $"+{count} song";
-                    }
-                    else
+                        Title = "Song queue",
+                        Color = DiscordColor.Blue
+                    };
+
+                    for (int i = 0; i < page.Count; i++)
                     {
-                        embed.Description = embed.Description + $"+{count} songs";
+                        var track = page[i];
+                        embed.Description += $"{counter + i}. [{track.Title}](https://www.youtube.com/watch?v={track.Identifier})\n";
                     }
+
+                    pages.Add(new Page(embed: embed));
+                    counter += 10;
                 }
-                await ctx.RespondAsync(embed: embed);
             }
             else
             {
                 await ctx.RespondAsync("There's nothing in the queue");
+                return;
             }
+
+            await ctx.SendPaginatedResponseAsync(pages);
         }
 
-        [Command("remove"), Description("Removes a track from the queue")]
-        public async Task Remove(CommandContext ctx, int index)
+        public static async Task Remove(SharedContext ctx, long index)
         {
             var node = ctx.Client.GetLavalink().GetIdealNodeConnection();
             var conn = node.GetGuildConnection(ctx.Guild);
@@ -156,12 +146,11 @@ namespace Cabbage_Music
                 await ctx.RespondAsync("Cannot remove track with this index.");
             }
 
-            Program.Queues[ctx.Guild.Id].RemoveAt(index - 1);
+            Program.Queues[ctx.Guild.Id].RemoveAt((int)index - 1);
             await ctx.RespondAsync("Removed track!");
         }
 
-        [Command("Pause"), Description("Pauses playback")]
-        public async Task Pause(CommandContext ctx)
+        public static async Task Pause(SharedContext ctx)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
@@ -185,12 +174,10 @@ namespace Cabbage_Music
             }
 
             await conn.PauseAsync();
-            //await ctx.RespondAsync("Paused");
-            await ctx.Message.CreateReactionAsync(DiscordEmoji.FromName(ctx.Client, ":pause_button:"));
+            await ctx.RespondAsync("Paused.");
         }
 
-        [Command("Resume"), Description("Resumes playback")]
-        public async Task Resume(CommandContext ctx)
+        public static async Task Resume(SharedContext ctx)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
@@ -214,12 +201,10 @@ namespace Cabbage_Music
             }
 
             await conn.ResumeAsync();
-            //await ctx.RespondAsync("Resumed");
-            await ctx.Message.CreateReactionAsync(DiscordEmoji.FromName(ctx.Client, ":arrow_forward:"));
+            await ctx.RespondAsync("Resumed.");
         }
 
-        [Command("Volume"), Aliases("vol", "v"), Description("Adjusts the volume, takes input from 0 to 100"), Cooldown(1, 5, CooldownBucketType.Guild)]
-        public async Task Volume(CommandContext ctx, int vol)
+        public static async Task Volume(SharedContext ctx, long vol)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
@@ -247,12 +232,11 @@ namespace Cabbage_Music
                 return;
             }
 
-            await conn.SetVolumeAsync(vol);
+            await conn.SetVolumeAsync((int)vol);
             await ctx.RespondAsync($"Set volume to {vol}%");
         }
 
-        [Command("Song"), Aliases("songinfo", "s", "si", "nowplaying", "np"), Description("Gives information about the currently playing song")]
-        public async Task Song(CommandContext ctx)
+        public static async Task Song(SharedContext ctx)
         {
             var node = ctx.Client.GetLavalink().GetIdealNodeConnection();
             var conn = node.GetGuildConnection(ctx.Guild);
@@ -282,8 +266,7 @@ namespace Cabbage_Music
             await ctx.RespondAsync(embed: embed);
         }
 
-        [Command("Skip"), Description("Skips to the next song in the queue or stops playback")]
-        public async Task Skip(CommandContext ctx)
+        public static async Task Skip(SharedContext ctx)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
@@ -309,8 +292,7 @@ namespace Cabbage_Music
             await conn.StopAsync();
         }
 
-        [Command("bassboost"), Aliases("bb"), Description("B A S S"), Cooldown(1, 5, CooldownBucketType.Guild)]
-        public async Task BB(CommandContext ctx)
+        public static async Task BB(SharedContext ctx)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
@@ -334,8 +316,7 @@ namespace Cabbage_Music
             await ctx.RespondAsync("Enjoy da B A S S\nThe changes should come into effect in a few seconds");
         }
 
-        [Command("reset"), Description("Resets all equalization"), Cooldown(1, 5, CooldownBucketType.Guild)]
-        public async Task Reset(CommandContext ctx)
+        public static async Task Reset(SharedContext ctx)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
@@ -356,8 +337,7 @@ namespace Cabbage_Music
             await ctx.RespondAsync("Enjoy the unaltered audio\nThe changes should come into effect in a few seconds");
         }
 
-        [Command("shuffle"), Description("Shuffles all the songs in the queue")]
-        public async Task Shuffle(CommandContext ctx)
+        public static async Task Shuffle(SharedContext ctx, Random rand)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
@@ -381,14 +361,13 @@ namespace Cabbage_Music
             }
 
             var list = new List<LavalinkTrack> { Program.Queues[ctx.Guild.Id][0] };
-            list.AddRange(Program.Queues[ctx.Guild.Id].Skip(1).OrderBy(x => Rand.Next()));
+            list.AddRange(Program.Queues[ctx.Guild.Id].Skip(1).OrderBy(x => rand.Next()));
             Program.Queues[ctx.Guild.Id] = list;
 
             await ctx.RespondAsync("Shuffled queue");
         }
 
-        [Command("seek"), Description("Skips ahead the specified amount of seconds (defaults to 15)")]
-        public async Task Pitch(CommandContext ctx, float seconds = 15)
+        public static async Task Seek(SharedContext ctx, double seconds = 15)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
@@ -421,8 +400,7 @@ namespace Cabbage_Music
             await ctx.RespondAsync($"Skipped forward {second}.{millisecond}s!");
         }
 
-        [Command("loop"), Aliases("repeat"), Description("Loops the currently playing song")]
-        public async Task Loop(CommandContext ctx)
+        public static async Task Loop(SharedContext ctx)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {

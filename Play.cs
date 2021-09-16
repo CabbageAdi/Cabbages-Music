@@ -1,5 +1,4 @@
 ﻿using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Attributes;
 using System.Threading.Tasks;
 using DSharpPlus.Entities;
 using System;
@@ -12,10 +11,7 @@ namespace Cabbage_Music
 {
     public class PlayCommand : BaseCommandModule
     {
-        public SpotifyClient Spotify { get; set; }
-
-        [Command("Play"), Aliases("p"), Description("Plays a song, Youtube playlist or Spotify playlist on Youtube")]
-        public async Task Play(CommandContext ctx, [RemainingText] string song)
+        public static async Task Play(SharedContext ctx, string song, SpotifyClient Spotify, bool shuffle = false, Random rand = null)
         {
             if (ctx.Member.VoiceState == null || ctx.Member.VoiceState.Channel == null)
             {
@@ -36,8 +32,6 @@ namespace Cabbage_Music
 
                 Program.Queues.Remove(ctx.Guild.Id);
             }
-
-            //await ctx.Guild.CurrentMember.ModifyAsync(x => x.Deafened = true);
 
             LavalinkLoadResult loadResult = null;
 
@@ -184,6 +178,8 @@ namespace Cabbage_Music
 
             if (isSpotify == true)
             {
+                if (shuffle)
+                    spotifyTracks = spotifyTracks.OrderBy(x => rand.Next()).ToList();
                 for (int i = 0; i < spotifyTracks.Count; i++)
                 {
                     if (i == 0)
@@ -193,10 +189,14 @@ namespace Cabbage_Music
             }
             else if (loadResult.LoadResultType == LavalinkLoadResultType.PlaylistLoaded)
             {
-                track = loadResult.Tracks.First();
+                var tracks = loadResult.Tracks.ToList();
+                if (shuffle)
+                    tracks = tracks.OrderBy(x => rand.Next()).ToList();
                 for (int i = 0; i < loadResult.Tracks.Count(); i++)
                 {
-                    write(loadResult.Tracks.ElementAt(i));
+                    if (i == 0)
+                        track = tracks[i];
+                    write(tracks[i]);
                 }
                 await ctx.RespondAsync("Added playlist");
             }
