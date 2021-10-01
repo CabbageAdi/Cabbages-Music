@@ -108,7 +108,7 @@ namespace Cabbage_Music
                     for (int i = 0; i < page.Count; i++)
                     {
                         var track = page[i];
-                        embed.Description += $"{counter + i}. [{track.Title}](https://www.youtube.com/watch?v={track.Identifier})\n";
+                        embed.Description += $"{counter + i + 1}. [{track.Title}](https://www.youtube.com/watch?v={track.Identifier})\n";
                     }
 
                     pages.Add(new Page(embed: embed));

@@ -1,7 +1,9 @@
 .vs/
 .git/
+.idea/
 
 bin/
 obj/
 
 Lavalink/
+config.json

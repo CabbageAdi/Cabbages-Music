@@ -25,7 +25,7 @@ namespace Cabbage_Music
         public static Dictionary<ulong, List<LavalinkTrack>> Queues { get; set; }
         public static Dictionary<ulong, bool> Loop { get; set; }
 
-        static void Main(string[] args)
+        public static void Main(string[] args)
         {
             MainAsync(args).ConfigureAwait(false).GetAwaiter().GetResult();
         }
